@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Model A Training</title>
+
+<!-- ▼ SNSサムネ(OGP)。公開したら下の content を「公開URL/ogp.png」の絶対URLに置き換えてね ▼ -->
+<meta property="og:title" content="Model A Training" />
+<meta property="og:description" content="ソシオニクスのモデルAを組み立てるミニトレーニング" />
+<meta property="og:image" content="ogp.png" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Model A Training" />
+<meta name="twitter:description" content="ソシオニクスのモデルAを組み立てるミニトレーニング" />
+<meta name="twitter:image" content="ogp.png" />
+<!-- ▲ ここまで ▲ -->
+
+<style>
+  :root { --ink:#2c2118; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body { margin:0; padding:0; }
+  body {
+    background:#eecabf;
+    color:var(--ink);
+    font-family:'Helvetica Neue','Hiragino Kaku Gothic ProN','Yu Gothic',system-ui,sans-serif;
+    min-height:100vh;
+  }
+  .wrap { max-width:460px; margin:0 auto; padding:24px 16px 40px; }
+  .panel { background:#fdf6ef; border:2.5px solid var(--ink); box-shadow:4px 4px 0 var(--ink); border-radius:18px; }
+  .panel-sm { box-shadow:3px 3px 0 var(--ink); }
+  button { font-family:inherit; cursor:pointer; }
+  .row { display:flex; align-items:center; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); grid-auto-rows:66px; gap:12px; }
+  .mb3 { margin-bottom:12px; } .mb4 { margin-bottom:16px; } .mb25 { margin-bottom:10px; }
+  .tile { display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:14px; user-select:none; }
+  .tile .lab { font-size:9px; font-weight:700; margin-top:3px; opacity:.78; }
+  .tile .big { font-weight:900; font-size:20px; line-height:1; }
+  .blocklab { font-size:10px; font-weight:800; letter-spacing:.12em; color:#bd9270; margin-bottom:8px; padding-left:2px; }
+  #toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:#2c2118; color:#fdf6ef;
+    font-weight:800; font-size:13px; padding:10px 18px; border-radius:999px; z-index:999; box-shadow:0 5px 14px rgba(0,0,0,.28); }
+</style>
+</head>
+<body>
+<div class="wrap"><div id="app"></div></div>
+<script>
+var INK = "#2c2118";
+var GOLD = "#c2913a", OK = GOLD, NG = "#d23f2c", PLUM = "#9d6ab0", ROSE = "#cf6f8e";
+var TEAL = "#6a9e90", TEALSOFT = "#cfe1db", REDDOT = "#d56a52";
+
+var FUNCTIONS = {
+  Ne:{el:"N",dir:"e",jp:"外向直観"}, Ni:{el:"N",dir:"i",jp:"内向直観"},
+  Se:{el:"S",dir:"e",jp:"外向感覚"}, Si:{el:"S",dir:"i",jp:"内向感覚"},
+  Te:{el:"T",dir:"e",jp:"外向論理"}, Ti:{el:"T",dir:"i",jp:"内向論理"},
+  Fe:{el:"F",dir:"e",jp:"外向倫理"}, Fi:{el:"F",dir:"i",jp:"内向倫理"}
+};
+var ALL8 = ["Ne","Ni","Se","Si","Te","Ti","Fe","Fi"];
+var EL = {
+  N:{e:"#9d6ab0",i:"#d9c5e3"},
+  S:{e:"#d56a52",i:"#f0c2b5"},
+  T:{e:"#6a9e90",i:"#c2d8d1"},
+  F:{e:"#cf6f8e",i:"#f1c8d4"}
+};
+var POSITIONS = [
+  {n:1,jp:"主導"},{n:2,jp:"創造"},{n:3,jp:"規範"},{n:4,jp:"脆弱"},
+  {n:5,jp:"暗示"},{n:6,jp:"動員"},{n:7,jp:"無視"},{n:8,jp:"証明"}
+];
+var TYPES = [
+  {code:"ILE",quadra:"α",stack:["Ne","Ti","Se","Fi","Si","Fe","Ni","Te"]},
+  {code:"SEI",quadra:"α",stack:["Si","Fe","Ni","Te","Ne","Ti","Se","Fi"]},
+  {code:"ESE",quadra:"α",stack:["Fe","Si","Te","Ni","Ti","Ne","Fi","Se"]},
+  {code:"LII",quadra:"α",stack:["Ti","Ne","Fi","Se","Fe","Si","Te","Ni"]},
+  {code:"EIE",quadra:"β",stack:["Fe","Ni","Te","Si","Ti","Se","Fi","Ne"]},
+  {code:"LSI",quadra:"β",stack:["Ti","Se","Fi","Ne","Fe","Ni","Te","Si"]},
+  {code:"SLE",quadra:"β",stack:["Se","Ti","Ne","Fi","Ni","Fe","Si","Te"]},
+  {code:"IEI",quadra:"β",stack:["Ni","Fe","Si","Te","Se","Ti","Ne","Fi"]},
+  {code:"SEE",quadra:"γ",stack:["Se","Fi","Ne","Ti","Ni","Te","Si","Fe"]},
+  {code:"ILI",quadra:"γ",stack:["Ni","Te","Si","Fe","Se","Fi","Ne","Ti"]},
+  {code:"LIE",quadra:"γ",stack:["Te","Ni","Se","Fi","Si","Fe","Ti","Ne"]},
+  {code:"ESI",quadra:"γ",stack:["Fi","Se","Ti","Ne","Te","Ni","Fe","Si"]},
+  {code:"LSE",quadra:"δ",stack:["Te","Si","Ne","Fi","Ni","Fe","Ti","Se"]},
+  {code:"EII",quadra:"δ",stack:["Fi","Ne","Ti","Se","Te","Ni","Fe","Si"]},
+  {code:"IEE",quadra:"δ",stack:["Ne","Fi","Se","Ti","Si","Te","Ni","Fe"]},
+  {code:"SLI",quadra:"δ",stack:["Si","Te","Ni","Fe","Ne","Fi","Se","Ti"]}
+];
+var QUADRA = {"α":"アルファ","β":"ベータ","γ":"ガンマ","δ":"デルタ"};
+var EROS = {
+  ILE:"子供タイプ",LII:"子供タイプ",EII:"子供タイプ",IEE:"子供タイプ",
+  SEI:"保護者タイプ",ESE:"保護者タイプ",LSE:"保護者タイプ",SLI:"保護者タイプ",
+  SLE:"侵略者タイプ",LSI:"侵略者タイプ",SEE:"侵略者タイプ",ESI:"侵略者タイプ",
+  IEI:"犠牲者タイプ",EIE:"犠牲者タイプ",ILI:"犠牲者タイプ",LIE:"犠牲者タイプ"
+};
+var EROS_PAIR = {"子供タイプ":"保護者タイプ","保護者タイプ":"子供タイプ","侵略者タイプ":"犠牲者タイプ","犠牲者タイプ":"侵略者タイプ"};
+var MODES = {
+  ego:{label:"主導・創造",positions:[0,1]},
+  values:{label:"価値機能",positions:[0,1,4,5]},
+  full:{label:"全8機能",positions:[0,1,2,3,4,5,6,7]}
+};
+var BLOCKS = [
+  {jp:"自我",idx:[0,1]},{jp:"超自我",idx:[2,3]},{jp:"超イド",idx:[4,5]},{jp:"イド",idx:[6,7]}
+];
+
+function randType(ex){ var i=Math.floor(Math.random()*TYPES.length); while(i===ex) i=Math.floor(Math.random()*TYPES.length); return i; }
+
+var S = {
+  mode:"ego", typeIndex:randType(-1), placement:{}, selFunc:null, selSlot:null,
+  checked:false, revealed:false, streak:0, best:0, solved:0, attempts:0
+};
+
+function clearSel(){ S.selFunc=null; S.selSlot=null; }
+function placeFunc(func,pi){
+  var next={}; for(var k in S.placement){ if(S.placement[k]!==func && Number(k)!==pi) next[k]=S.placement[k]; }
+  next[pi]=func; S.placement=next; clearSel();
+}
+function clearBoard(){ S.placement={}; clearSel(); S.checked=false; S.revealed=false; }
+function nextType(){ S.typeIndex=randType(S.typeIndex); clearBoard(); }
+function retry(){ S.checked=false; S.revealed=false; clearSel(); }   // 答えは残して直せる状態に戻す
+function changeMode(m){ S.mode=m; clearBoard(); }
+function tapPool(name){
+  if(S.checked) return;
+  if(S.selSlot!=null){ placeFunc(name,S.selSlot); return; }
+  S.selFunc = (S.selFunc===name)?null:name; S.selSlot=null;
+}
+function tapSlot(pi){
+  var active=MODES[S.mode].positions;
+  if(S.checked || active.indexOf(pi)<0) return;
+  if(S.selFunc){ placeFunc(S.selFunc,pi); return; }
+  if(S.placement[pi]){ var f=S.placement[pi]; delete S.placement[pi]; S.selFunc=f; S.selSlot=null; return; }
+  S.selSlot = (S.selSlot===pi)?null:pi; S.selFunc=null;
+}
+function check(){
+  var active=MODES[S.mode].positions, t=TYPES[S.typeIndex];
+  var filled=active.every(function(p){return S.placement[p];}); if(!filled) return;
+  var ok=active.every(function(p){return S.placement[p]===t.stack[p];});
+  S.checked=true; clearSel(); S.attempts++;
+  if(ok){ S.solved++; S.streak++; if(S.streak>S.best) S.best=S.streak; } else { S.streak=0; }
+}
+function showAnswer(){
+  var active=MODES[S.mode].positions, t=TYPES[S.typeIndex];
+  active.forEach(function(p){ S.placement[p]=t.stack[p]; });
+  clearSel(); S.checked=true; S.revealed=true; S.streak=0;
+}
+
+function toast(msg){
+  var old=document.getElementById("toast"); if(old) old.remove();
+  var t=document.createElement("div"); t.id="toast"; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(function(){ if(t) t.remove(); },1800);
+}
+function share(){
+  var url=location.href;
+  var data={title:"Model A Training",text:"ソシオニクスのモデルAを組むトレーニング",url:url};
+  if(navigator.share){ navigator.share(data).catch(function(){}); return; }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(function(){ toast("URLをコピーしたよ"); }, function(){ window.prompt("URLをコピー",url); });
+  } else { window.prompt("URLをコピー",url); }
+}
+
+function tileStyle(name,status,lifted){
+  var f=FUNCTIONS[name], fill=EL[f.el][f.dir], border=INK;
+  if(status==="correct") border=OK; if(status==="wrong") border=NG;
+  return "background:"+fill+";color:"+INK+";border:2.5px solid "+border+";border-radius:14px;"+
+    "box-shadow:"+(lifted?("1px 1px 0 "+INK):("3px 3px 0 "+INK))+";"+
+    "transform:"+(lifted?"translate(2px,2px)":"none")+";transition:transform .1s ease,box-shadow .1s ease;";
+}
+
+function render(){
+  var t=TYPES[S.typeIndex], active=MODES[S.mode].positions;
+  var placed=[]; for(var k in S.placement) placed.push(S.placement[k]);
+  var filled=active.every(function(p){return S.placement[p];});
+  var allCorrect=S.checked && active.every(function(p){return S.placement[p]===t.stack[p];});
+  var eros=EROS[t.code];
+  var h="";
+
+  // ヘッダー
+  h+='<div class="row mb4" style="justify-content:space-between;">';
+  h+='<h1 style="font-weight:900;font-size:26px;letter-spacing:-0.03em;line-height:1;color:'+INK+';margin:0;">'+
+       'Model<span style="color:'+REDDOT+'">·</span>A <span style="font-size:18px;letter-spacing:.02em;color:'+TEAL+';">Training</span></h1>';
+  h+='<div style="text-align:right;">'+
+       '<div style="font-size:9px;font-weight:800;letter-spacing:.18em;color:#b08562;">STREAK</div>'+
+       '<div style="font-weight:900;font-size:28px;line-height:1;color:'+(S.streak>0?GOLD:INK)+';">'+S.streak+'</div>'+
+       '<div style="font-size:9px;color:#bd9270;margin-top:2px;">best '+S.best+' / '+S.solved+'-'+S.attempts+'</div>'+
+     '</div></div>';
+
+  // 難易度
+  h+='<div class="row mb3" style="gap:8px;">';
+  Object.keys(MODES).forEach(function(m){
+    var on=S.mode===m;
+    h+='<button data-act="mode" data-m="'+m+'" style="flex:1;padding:10px 0;font-size:12px;font-weight:800;border-radius:12px;'+
+       'background:'+(on?INK:"#fdf6ef")+';color:'+(on?"#fdf6ef":"#9c7a5b")+';border:2.5px solid '+INK+';'+
+       'box-shadow:'+(on?("1px 1px 0 "+INK):("3px 3px 0 "+INK))+';transform:'+(on?"translate(2px,2px)":"none")+';transition:all .1s ease;">'+MODES[m].label+'</button>';
+  });
+  h+='</div>';
+
+  // ガイド
+  if(!S.checked){
+    var g;
+    if(S.selFunc) g='<b style="background:#fff;border:1.5px solid '+INK+';border-radius:6px;padding:1px 6px;">'+S.selFunc+'</b> を入れる位置をタップ';
+    else if(S.selSlot!=null) g='<b>'+POSITIONS[S.selSlot].jp+'</b> に入れる機能をタップ';
+    else g='<span style="color:#8a6f55;">位置か機能をタップして組み合わせてね → 答え合わせ</span>';
+    var lit=(S.selFunc||S.selSlot!=null);
+    h+='<div class="mb3" style="padding:10px 14px;border-radius:12px;font-size:12px;font-weight:800;'+
+       'background:'+(lit?"#dceee9":"#fdf6ef")+';border:2px solid '+INK+';">'+g+'</div>';
+  }
+
+  // 出題
+  h+='<div class="panel row mb3" style="justify-content:space-between;padding:16px 20px;">'+
+       '<span style="font-weight:900;font-size:42px;letter-spacing:-0.03em;line-height:1;">'+t.code+'</span>'+
+       '<span style="font-size:11px;font-weight:800;padding:7px 14px;border-radius:999px;background:'+TEALSOFT+';border:2px solid '+INK+';">'+active.length+' 枠</span>'+
+     '</div>';
+
+  // 盤面
+  h+='<div class="mb4">';
+  BLOCKS.forEach(function(b){
+    h+='<div class="panel panel-sm" style="padding:12px;margin-bottom:10px;">';
+    h+='<div class="blocklab">'+b.jp+'</div><div class="grid2">';
+    b.idx.forEach(function(pi){
+      var pos=POSITIONS[pi], isActive=active.indexOf(pi)>=0, func=S.placement[pi], isSel=S.selSlot===pi;
+      var open=isActive && !func && !S.checked;
+      var status=null; if(S.checked && isActive) status=(func===t.stack[pi])?"correct":"wrong";
+      var hint=open && (S.selFunc||isSel);
+      var bg = isSel?"#dfeee9":(hint?"#eef5f2":(isActive?"#fdf6ef":"#ece0d2"));
+      var bc = status==="correct"?OK:(status==="wrong"?NG:((isSel||hint)?TEAL:(isActive?INK:"#cdbba6")));
+      h+='<div data-act="slot" data-i="'+pi+'" style="min-height:72px;border-radius:14px;padding:10px;cursor:'+(isActive?"pointer":"default")+';'+
+         'background:'+bg+';border:2.5px '+(func?"solid":"dashed")+' '+bc+';opacity:'+(isActive?1:.5)+';">';
+      h+='<div style="font-size:11px;font-weight:800;color:'+(isSel?TEAL:"#a98869")+';">'+pos.n+'. '+pos.jp+'</div>';
+      if(func){
+        h+='<div class="row" style="margin-top:6px;gap:6px;"><span style="'+tileStyle(func,status,false)+
+           'display:inline-flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:10px;font-weight:900;font-size:16px;">'+func+'</span>';
+        if(status==="wrong") h+='<span style="font-size:10px;font-weight:800;color:'+NG+';">正 '+t.stack[pi]+'</span>';
+        h+='</div>';
+      } else if(open){
+        h+='<div style="margin-top:10px;font-size:11px;font-weight:800;color:'+(hint?TEAL:"#cdb9a3")+';">'+(hint?"ここに入れる":"えらぶ")+'</div>';
+      }
+      h+='</div>';
+    });
+    h+='</div></div>';
+  });
+  h+='</div>';
+
+  // 機能
+  var poolOutline = S.selSlot!=null ? ("outline:2px dashed "+TEAL+";outline-offset:3px;") : "";
+  h+='<div class="panel panel-sm mb4" style="padding:14px;'+poolOutline+'">';
+  h+='<div class="blocklab">FUNCTIONS</div><div class="grid4">';
+  ALL8.forEach(function(f){
+    if(placed.indexOf(f)>=0){ h+='<div style="opacity:0;"></div>'; return; }
+    h+='<button class="tile" data-act="pool" data-f="'+f+'" style="'+tileStyle(f,null,S.selFunc===f)+'">'+
+       '<span class="big">'+f+'</span><span class="lab">'+FUNCTIONS[f].jp+'</span></button>';
+  });
+  h+='</div></div>';
+
+  // 結果
+  if(S.checked){
+    var rbg, rcol, rline, msg;
+    if(allCorrect){ rbg="#f3e3c2"; rcol="#8a6326"; rline=OK; msg="正解！ ✦ CLEAR"; }
+    else if(S.revealed){ rbg="#fdf6ef"; rcol="#9c7a5b"; rline=INK; msg="回答 ✦ "+t.code+" の並び"; }
+    else { rbg="#f9d6cf"; rcol="#bb3a26"; rline=NG; msg="ずれてるよ。直してやり直す？"; }
+    h+='<div class="mb25" style="text-align:center;border-radius:14px;padding:12px;font-weight:800;font-size:14px;'+
+       'background:'+rbg+';color:'+rcol+';border:2.5px solid '+rline+';box-shadow:3px 3px 0 '+rline+';">'+msg+'</div>';
+  }
+
+  // クアドラ・恋愛（正解 or 回答を見たとき）
+  if(S.checked && (allCorrect||S.revealed)){
+    h+='<div class="panel panel-sm mb3" style="padding:14px;"><div class="grid2">';
+    h+='<div style="border-radius:12px;padding:12px 10px;text-align:center;background:'+TEALSOFT+';border:2px solid '+INK+';">'+
+       '<div style="font-size:9px;font-weight:800;letter-spacing:.1em;color:#45807a;">QUADRA</div>'+
+       '<div style="font-weight:900;font-size:17px;margin-top:3px;">'+QUADRA[t.quadra]+'</div>'+
+       '<div style="font-size:10px;color:#5f928a;margin-top:1px;">'+t.quadra+'</div></div>';
+    h+='<div style="border-radius:12px;padding:12px 10px;text-align:center;background:#f1c8d4;border:2px solid '+INK+';">'+
+       '<div style="font-size:9px;font-weight:800;letter-spacing:.1em;color:#b14f6e;">恋愛タイプ</div>'+
+       '<div style="font-weight:900;font-size:17px;margin-top:3px;">'+eros+'</div></div>';
+    h+='</div><div style="font-size:11px;font-weight:700;text-align:center;margin-top:10px;color:#9c7a5b;">'+
+       'かみ合う相手は <span style="color:#b14f6e;font-weight:900;">'+EROS_PAIR[eros]+'</span></div></div>';
+  }
+
+  // 操作
+  if(!S.checked){
+    h+='<div class="grid2">';
+    h+='<button data-act="check" '+(filled?"":"disabled")+' style="border-radius:999px;padding:13px;font-weight:900;font-size:14px;'+
+       'background:'+(filled?GOLD:"#e7dccb")+';color:'+(filled?"#fdf6ef":"#bd9270")+';border:2.5px solid '+(filled?INK:"#cdbba6")+';'+
+       (filled?("box-shadow:3px 3px 0 "+INK+";"):"")+'">答え合わせ</button>';
+    h+='<button data-act="answer" style="border-radius:999px;padding:13px;font-weight:900;font-size:14px;background:#fdf6ef;color:'+INK+';border:2.5px solid '+INK+';box-shadow:3px 3px 0 '+INK+';">答えを見る</button>';
+    h+='</div>';
+    h+='<button data-act="clear" style="width:100%;margin-top:12px;border-radius:999px;padding:9px;font-size:12px;font-weight:800;background:transparent;color:#9c7a5b;border:2px solid #cdbba6;">ぜんぶ外す</button>';
+  } else if(allCorrect || S.revealed){
+    h+='<button data-act="next" style="width:100%;border-radius:999px;padding:14px;font-weight:900;font-size:14px;background:'+TEAL+';color:#fdf6ef;border:2.5px solid '+INK+';box-shadow:3px 3px 0 '+INK+';">NEXT →</button>';
+  } else {
+    // 不正解：やり直す or 答えを見る
+    h+='<div class="grid2">';
+    h+='<button data-act="retry" style="border-radius:999px;padding:13px;font-weight:900;font-size:14px;background:'+GOLD+';color:#fdf6ef;border:2.5px solid '+INK+';box-shadow:3px 3px 0 '+INK+';">やり直す</button>';
+    h+='<button data-act="answer" style="border-radius:999px;padding:13px;font-weight:900;font-size:14px;background:#fdf6ef;color:'+INK+';border:2.5px solid '+INK+';box-shadow:3px 3px 0 '+INK+';">答えを見る</button>';
+    h+='</div>';
+  }
+
+  // シェア
+  h+='<button data-act="share" style="width:100%;margin-top:12px;border-radius:999px;padding:11px;font-size:13px;font-weight:900;background:#fdf6ef;color:'+INK+';border:2.5px solid '+INK+';box-shadow:3px 3px 0 '+INK+';">このトレーニングをシェア</button>';
+
+  // クレジット
+  h+='<div class="row" style="justify-content:center;margin-top:16px;">'+
+     '<span style="font-size:11px;font-weight:800;padding:6px 14px;border-radius:999px;background:#fdf6ef;border:2px solid '+INK+';box-shadow:2px 2px 0 '+INK+';color:'+INK+';">© @fishfishstory</span></div>';
+
+  document.getElementById("app").innerHTML = h;
+}
+
+document.addEventListener("click", function(e){
+  var el = e.target.closest ? e.target.closest("[data-act]") : null;
+  if(!el) return;
+  if(el.hasAttribute("disabled")) return;
+  var act = el.getAttribute("data-act");
+  if(act==="mode") changeMode(el.getAttribute("data-m"));
+  else if(act==="pool") tapPool(el.getAttribute("data-f"));
+  else if(act==="slot") tapSlot(Number(el.getAttribute("data-i")));
+  else if(act==="check") check();
+  else if(act==="answer") showAnswer();
+  else if(act==="next") nextType();
+  else if(act==="retry") retry();
+  else if(act==="clear") clearBoard();
+  else if(act==="share"){ share(); return; }
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
